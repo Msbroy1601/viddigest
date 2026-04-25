@@ -38,6 +38,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  verification: {
+    google: "CeJHoDPRiXJvfIOMJ9i9vUnuR7fLSPn-htNQ_nvNKR8",
+  },
   alternates: {
     canonical: "https://viddigest-ai.vercel.app",
   },

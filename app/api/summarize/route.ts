@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchTranscript } from "@/lib/transcript";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+export const runtime = "edge";
+
 const MAX_TRANSCRIPT_LENGTH = 100_000;
 
 /**

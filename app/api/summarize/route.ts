@@ -136,6 +136,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validate that Gemini actually summarized the video (not a refusal)
+    const refusalPatterns = [
+      "I cannot access",
+      "I'm unable to access",
+      "I can't access",
+      "I do not have the ability",
+      "I am unable to",
+      "I'm not able to",
+      "cannot browse",
+      "can't browse",
+      "unable to watch",
+      "cannot watch",
+    ];
+    const lowerText = rawText.toLowerCase();
+    const isRefusal = refusalPatterns.some((p) => lowerText.includes(p.toLowerCase()));
+
+    if (isRefusal) {
+      return NextResponse.json(
+        {
+          error:
+            "Could not process this video. The AI was unable to analyze it. Please try a different video.",
+        },
+        { status: 422 }
+      );
+    }
+
     const { tldr, keyPoints, detailedSummary } = parseResponse(rawText);
 
     return NextResponse.json({

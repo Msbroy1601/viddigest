@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchTranscript } from "@/lib/transcript";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const runtime = "edge";
-
-const MAX_TRANSCRIPT_LENGTH = 100_000;
 
 /**
  * Extract a YouTube video ID from various URL formats:
@@ -63,9 +60,10 @@ function parseResponse(text: string): {
   return { tldr, keyPoints, detailedSummary };
 }
 
-const PROMPT = `You are an expert content summarizer. Given the transcript of a YouTube video,
-produce a structured summary. If the transcript is in a non-English language,
-provide the summary in English.
+const PROMPT = `You are an expert content summarizer. Summarize this YouTube video.
+If the video is in a non-English language, provide the summary in English.
+
+Use this exact format:
 
 === TLDR ===
 2-3 concise sentences.
@@ -75,8 +73,6 @@ provide the summary in English.
 
 === DETAILED SUMMARY ===
 Thorough paragraph-form summary.
-
-Here is the transcript:
 `;
 
 export async function POST(req: NextRequest) {
@@ -103,36 +99,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Fetch transcript ---
-    let transcript = "";
-    try {
-      transcript = await fetchTranscript(videoId);
-    } catch {
-      return NextResponse.json(
-        {
-          error:
-            "Could not extract the transcript for this video. The video might not have captions available, or it may be a music/instrumental video without dialogue.",
-        },
-        { status: 422 }
-      );
-    }
-
-    if (!transcript.trim()) {
-      return NextResponse.json(
-        {
-          error:
-            "The transcript for this video appears to be empty. This usually happens with music videos or videos without spoken content.",
-        },
-        { status: 422 }
-      );
-    }
-
-    // Truncate very long transcripts
-    if (transcript.length > MAX_TRANSCRIPT_LENGTH) {
-      transcript = transcript.slice(0, MAX_TRANSCRIPT_LENGTH);
-    }
-
-    // --- Summarize with Gemini ---
+    // --- Summarize with Gemini (native YouTube video understanding) ---
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
@@ -144,9 +111,30 @@ export async function POST(req: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const result = await model.generateContent(PROMPT + transcript);
+    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+    const result = await model.generateContent([
+      {
+        fileData: {
+          fileUri: youtubeUrl,
+          mimeType: "video/mp4",
+        },
+      },
+      { text: PROMPT },
+    ]);
+
     const response = result.response;
     const rawText = response.text();
+
+    if (!rawText || rawText.trim().length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Could not generate a summary for this video. The video might be too short, private, or unavailable.",
+        },
+        { status: 422 }
+      );
+    }
 
     const { tldr, keyPoints, detailedSummary } = parseResponse(rawText);
 
@@ -155,15 +143,27 @@ export async function POST(req: NextRequest) {
       tldr,
       keyPoints,
       detailedSummary,
-      source: "custom-transcript + gemini-2.5-flash",
+      source: "gemini-2.5-flash-youtube",
     });
   } catch (error: unknown) {
     console.error("Summarize API error:", error);
 
-    const message =
-      error instanceof Error && error.message?.includes("quota")
-        ? "We've hit our usage limit for now. Please try again in a few minutes."
-        : "Something went wrong while generating the summary. Please try again.";
+    let message =
+      "Something went wrong while generating the summary. Please try again.";
+
+    if (error instanceof Error) {
+      if (error.message?.includes("quota")) {
+        message =
+          "We've hit our usage limit for now. Please try again in a few minutes.";
+      } else if (
+        error.message?.includes("not found") ||
+        error.message?.includes("unavailable") ||
+        error.message?.includes("Could not")
+      ) {
+        message =
+          "This video could not be processed. It may be private, age-restricted, or unavailable.";
+      }
+    }
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { YoutubeTranscript } from "youtube-transcript";
+import { fetchTranscript } from "@/lib/transcript";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const MAX_TRANSCRIPT_LENGTH = 100_000;
@@ -104,33 +104,15 @@ export async function POST(req: NextRequest) {
     // --- Fetch transcript ---
     let transcript = "";
     try {
-      const items = await YoutubeTranscript.fetchTranscript(videoId);
-      transcript = items.map((i) => i.text).join(" ");
+      transcript = await fetchTranscript(videoId);
     } catch {
-      // Retry with common language codes
-      const langCodes = ["en", "hi", "es", "fr", "de", "ja", "ko", "pt", "ru", "zh"];
-      let fetched = false;
-      for (const lang of langCodes) {
-        try {
-          const items = await YoutubeTranscript.fetchTranscript(videoId, {
-            lang,
-          });
-          transcript = items.map((i) => i.text).join(" ");
-          fetched = true;
-          break;
-        } catch {
-          continue;
-        }
-      }
-      if (!fetched) {
-        return NextResponse.json(
-          {
-            error:
-              "Could not extract the transcript for this video. The video might not have captions available, or it may be a music/instrumental video without dialogue.",
-          },
-          { status: 422 }
-        );
-      }
+      return NextResponse.json(
+        {
+          error:
+            "Could not extract the transcript for this video. The video might not have captions available, or it may be a music/instrumental video without dialogue.",
+        },
+        { status: 422 }
+      );
     }
 
     if (!transcript.trim()) {
@@ -171,7 +153,7 @@ export async function POST(req: NextRequest) {
       tldr,
       keyPoints,
       detailedSummary,
-      source: "youtube-transcript + gemini-2.5-flash",
+      source: "custom-transcript + gemini-2.5-flash",
     });
   } catch (error: unknown) {
     console.error("Summarize API error:", error);

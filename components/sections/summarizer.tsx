@@ -12,7 +12,7 @@ interface SummaryResult {
 }
 
 const loadingMessages = [
-  "Extracting transcript...",
+  "Analyzing video...",
   "Generating summary...",
 ];
 
@@ -38,17 +38,27 @@ export function Summarizer() {
     // Advance loading message after a delay
     const timer = setTimeout(() => setLoadingStage(1), 3000);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 65000);
+
     try {
       const res = await fetch("/api/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
+        signal: controller.signal,
       });
 
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        setError("Received an unexpected response from the server. Please try again.");
+        return;
+      }
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong. Please try again.");
+        setError(data?.error || "Something went wrong. Please try again.");
         return;
       }
 
@@ -57,9 +67,14 @@ export function Summarizer() {
       setTimeout(() => {
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 200);
-    } catch {
-      setError("Unable to connect to the server. Please check your internet connection and try again.");
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("The request timed out. The video may be too long or the server is busy. Please try again.");
+      } else {
+        setError("Unable to connect to the server. Please check your internet connection and try again.");
+      }
     } finally {
+      clearTimeout(timeout);
       clearTimeout(timer);
       setLoading(false);
     }
@@ -103,7 +118,7 @@ export function Summarizer() {
           className="flex flex-col sm:flex-row gap-3"
         >
           <input
-            type="url"
+            type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://www.youtube.com/watch?v=..."
@@ -175,7 +190,7 @@ export function Summarizer() {
               {/* Video embed */}
               <div className="w-full aspect-video rounded-xl overflow-hidden border border-[#222] shadow-2xl shadow-black/50">
                 <iframe
-                  src={`https://www.youtube.com/embed/${result.videoId}`}
+                  src={`https://www.youtube.com/embed/${encodeURIComponent(result.videoId)}`}
                   title="YouTube video"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -194,7 +209,7 @@ export function Summarizer() {
               </div>
 
               {/* Key Points */}
-              {result.keyPoints.length > 0 && (
+              {result.keyPoints && result.keyPoints.length > 0 && (
                 <div className="rounded-xl bg-[#111] border border-[#222] p-6">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-red-400 mb-4">
                     Key Points

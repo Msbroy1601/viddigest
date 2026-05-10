@@ -8,7 +8,7 @@ const faqs = [
   {
     question: "Is VidDigest really free?",
     answer:
-      "Yes, 100% free. Powered by Google Gemini's free API tier.",
+      "Yes, 100% free. We use multiple AI providers (Groq, Gemini, OpenRouter) so the service stays reliable.",
   },
   {
     question: "What languages are supported?",
@@ -23,7 +23,7 @@ const faqs = [
   {
     question: "How does it work?",
     answer:
-      "We extract the video's captions, then use Google's Gemini AI to generate a structured summary.",
+      "We extract the video's captions, then use AI to generate a structured summary. Our system tries multiple providers to ensure reliability.",
   },
   {
     question: "What if a video has no captions?",

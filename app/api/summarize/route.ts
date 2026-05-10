@@ -27,12 +27,14 @@ function parseResponse(text: string): {
   keyPoints: string[];
   detailedSummary: string;
 } {
-  const tldrMatch = text.match(/===\s*TLDR\s*===\s*([\s\S]*?)(?=\n===|$)/i);
+  // Try structured delimiters first
+  const tldrMatch = text.match(/===\s*TLDR\s*===\s*([\s\S]*?)(?=\n\s*===|$)/i);
   const keyPointsMatch = text.match(
-    /===\s*KEY POINTS\s*===\s*([\s\S]*?)(?=\n===|$)/i
+    /===\s*KEY POINTS\s*===\s*([\s\S]*?)(?=\n\s*===|$)/i
   );
+  // Use greedy match for detailed summary since it is the last section
   const detailedMatch = text.match(
-    /===\s*DETAILED SUMMARY\s*===\s*([\s\S]*?)$/i
+    /===\s*DETAILED SUMMARY\s*===\s*([\s\S]*)$/i
   );
 
   const tldr = tldrMatch ? tldrMatch[1].trim() : text.slice(0, 300);
@@ -40,10 +42,22 @@ function parseResponse(text: string): {
     ? keyPointsMatch[1]
         .trim()
         .split(/\n/)
-        .map((line) => line.replace(/^[-*•]\s*/, "").trim())
+        .map((line) => line.replace(/^[-*\u2022\d.)]+\s*/, "").trim())
         .filter(Boolean)
     : [];
-  const detailedSummary = detailedMatch ? detailedMatch[1].trim() : "";
+  let detailedSummary = detailedMatch ? detailedMatch[1].trim() : "";
+
+  // Fallback: if no structured output detected, split text heuristically
+  if (!tldrMatch && !keyPointsMatch && !detailedMatch) {
+    const lines = text.trim().split("\n").filter(Boolean);
+    if (lines.length >= 3) {
+      return {
+        tldr: lines.slice(0, 2).join(" "),
+        keyPoints: lines.slice(2, Math.min(8, lines.length)).map(l => l.replace(/^[-*\u2022\d.)]+\s*/, "").trim()),
+        detailedSummary: lines.slice(2).join("\n"),
+      };
+    }
+  }
 
   return { tldr, keyPoints, detailedSummary };
 }

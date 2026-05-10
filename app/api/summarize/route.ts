@@ -283,7 +283,7 @@ async function tryGemini(videoId: string): Promise<string | null> {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { thinkingConfig: { thinkingBudget: 0 } } as any });
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
     // Race against a 55-second timeout (Vercel Hobby limit is 60s)

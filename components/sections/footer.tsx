@@ -9,7 +9,7 @@ export function Footer() {
           Built with ❤️ by Baishali
         </span>
         <span>
-          Powered by Google Gemini
+          Powered by AI
         </span>
       </div>
     </footer>

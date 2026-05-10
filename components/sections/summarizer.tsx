@@ -200,9 +200,16 @@ export function Summarizer() {
 
               {/* TLDR */}
               <div className="rounded-xl border-l-4 border-red-500 bg-[#111] p-6">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-red-400 mb-3">
-                  TLDR
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-red-400">
+                    TLDR
+                  </h3>
+                  {result.source && (
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-600 bg-neutral-800/50 px-2 py-0.5 rounded-full">
+                      via {result.source}
+                    </span>
+                  )}
+                </div>
                 <p className="text-neutral-200 text-base sm:text-lg leading-relaxed">
                   {result.tldr}
                 </p>

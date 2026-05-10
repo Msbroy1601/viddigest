@@ -5,7 +5,6 @@ import Groq from "groq-sdk";
 export const maxDuration = 60;
 
 // --- Video ID extraction -----------------------------------------
-
 function extractVideoId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})/,
@@ -284,7 +283,7 @@ async function tryGemini(videoId: string): Promise<string | null> {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
     // Race against a 50-second timeout (Vercel Hobby limit is 60s)

@@ -10,7 +10,7 @@ function extractVideoId(url: string): string | null {
     /(?:youtube\.com\/watch\?.*v=)([a-zA-Z0-9_-]{11})/,
     /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
     /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-{11})/,
   ];
   for (const pattern of patterns) {
     const match = url.match(pattern);
@@ -286,9 +286,9 @@ async function tryGemini(videoId: string): Promise<string | null> {
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { thinkingConfig: { thinkingBudget: 0 } } as any });
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // Race against a 55-second timeout (Vercel Hobby limit is 60s)
+    // Race against a 58-second timeout (Vercel Hobby limit is 60s)
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("GEMINI_TIMEOUT")), 55000)
+      setTimeout(() => reject(new Error("GEMINI_TIMEOUT")), 58000)
     );
 
     const contentPromise = model.generateContent([
@@ -328,7 +328,7 @@ async function tryGemini(videoId: string): Promise<string | null> {
     return rawText;
   } catch (err) {
     if (err instanceof Error && err.message === "GEMINI_TIMEOUT") {
-      console.log("[gemini] Timed out after 55s");
+      console.log("[gemini] Timed out after 58s");
     } else {
       console.error("[gemini] Failed:", err);
     }

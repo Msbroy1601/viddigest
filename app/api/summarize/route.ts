@@ -284,10 +284,15 @@ async function tryGemini(videoId: string): Promise<string | null> {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    const result = await model.generateContent([
+    // Race against a 50-second timeout (Vercel Hobby limit is 60s)
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("GEMINI_TIMEOUT")), 50000)
+    );
+
+    const contentPromise = model.generateContent([
       {
         fileData: {
           fileUri: youtubeUrl,
@@ -297,10 +302,12 @@ async function tryGemini(videoId: string): Promise<string | null> {
       { text: GEMINI_VIDEO_PROMPT },
     ]);
 
+    const result = await Promise.race([contentPromise, timeoutPromise]);
+
     const rawText = result.response.text();
     if (!rawText || rawText.trim().length === 0) return null;
 
-    // Detect AI refusal (model says it can't access the video)
+    // Detect AI refusal (model says it cannot access the video)
     const refusalPatterns = [
       "I cannot access",
       "I'm unable to access",
@@ -321,7 +328,11 @@ async function tryGemini(videoId: string): Promise<string | null> {
 
     return rawText;
   } catch (err) {
-    console.error("[gemini] Failed:", err);
+    if (err instanceof Error && err.message === "GEMINI_TIMEOUT") {
+      console.log("[gemini] Timed out after 50s");
+    } else {
+      console.error("[gemini] Failed:", err);
+    }
     return null;
   }
 }

@@ -286,9 +286,9 @@ async function tryGemini(videoId: string): Promise<string | null> {
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // Race against a 50-second timeout (Vercel Hobby limit is 60s)
+    // Race against a 55-second timeout (Vercel Hobby limit is 60s)
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("GEMINI_TIMEOUT")), 50000)
+      setTimeout(() => reject(new Error("GEMINI_TIMEOUT")), 55000)
     );
 
     const contentPromise = model.generateContent([
@@ -328,7 +328,7 @@ async function tryGemini(videoId: string): Promise<string | null> {
     return rawText;
   } catch (err) {
     if (err instanceof Error && err.message === "GEMINI_TIMEOUT") {
-      console.log("[gemini] Timed out after 50s");
+      console.log("[gemini] Timed out after 55s");
     } else {
       console.error("[gemini] Failed:", err);
     }
